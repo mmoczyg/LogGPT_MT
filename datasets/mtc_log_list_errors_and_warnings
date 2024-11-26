@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+
+# Lists all errors and warnings within a given MT-Controller log file, optionally limited to a given session ID
+#
+# Author: Thomas Glau, Mercedes-Benz AG
+
+set -euo pipefail
+
+
+num_args=$#
+
+# Check whether the 'jq' tool is available
+if ! command -v jq &> /dev/null
+then
+  echo "ERROR: The 'jq' JSON filter tool is required to run this script. Please install and repeat."
+  echo "       You probably just have to run 'sudo apt install jq' to install."
+  exit 1
+fi
+
+# Run the JSON filter
+if [ $num_args -eq 2 ]
+then
+  jq -c --arg session_id "$2" '.[] | select((.severity|test("WARNING|ERROR")) and .session_id==$session_id)' "$1"
+elif [ $num_args -eq 1 ]
+then
+  jq -c '.[] | select(.severity|test("WARNING|ERROR"))' "$1"
+else
+  echo "Lists all errors and warnings within a given MT-Controller log file, optionally limited to a given session ID"
+  echo ""
+  echo "Usage: $(basename "$0") MT_CONTROLLER_LOG_FILE.JSON [SESSION_ID]"
+fi
+

@@ -1,0 +1,4 @@
+# Ignoriere große Datensätze
+datasets/*.csv
+*.log
+*.tar.gz
