@@ -154,7 +154,6 @@ class LogParser:
                 parentn = parentn.childD[token]
 
         currentDepth += 1
-    # seq1 is template
 
     def seqDist(self, seq1, seq2):
         assert len(seq1) == len(seq2)
@@ -172,7 +171,6 @@ class LogParser:
 
         return retVal, numOfPar
 
-    # Before (inconsistent)
     def fastMatch(self, logClustL, seq):
         retLogClust = None
 
@@ -270,7 +268,6 @@ class LogParser:
         for idx, line in self.df_log.iterrows():
             logID = line['LineId']
             logmessageL = self.preprocess(line['msg']).strip().split()
-            # logmessageL = filter(lambda x: x != '', re.split('[\s=:,]', self.preprocess(line['Content'])))
             matchCluster = self.treeSearch(rootNode, logmessageL)
 
             # Match no existing log cluster
@@ -313,7 +310,12 @@ class LogParser:
 
         self.df_log = pd.DataFrame(log_messages)
         self.df_log.insert(0, 'LineId', None)
-        self.df_log['LineId'] = [i + 1 for i in range(len(self.df_log))]  # 😀️
+        self.df_log['LineId'] = [i + 1 for i in range(len(self.df_log))]
+
+        # Ensure 'date' and 'time' columns are included if they exist in the log format
+        if 'date' not in self.df_log.columns or 'time' not in self.df_log.columns:
+            headers, regex = self.generate_logformat_regex(self.log_format)
+            self.df_log = self.log_to_dataframe(os.path.join(self.path, self.logName), regex, headers, self.log_format)
 
     def preprocess(self, line):
         for currentRex in self.rex:
@@ -339,7 +341,7 @@ class LogParser:
         logdf['LineId'] = [i + 1 for i in range(linecount)]
         return logdf
 
-    def json_to_dataframe(self, log_file):  # 😀️
+    def json_to_dataframe(self, log_file):
         with open(log_file, 'r') as fin:
             log_data = json.load(fin)
 
