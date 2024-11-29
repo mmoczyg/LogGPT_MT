@@ -32,9 +32,10 @@ class InitGPT(nn.Module):
         else:
             self.top_k = min(int((len(self.vocab)-5)*0.95), options['top_k'])
         self._init_training()
-        #self._predict_topk(self.test_df['EventSequence'].tolist()[::1], self.test_df['Label'].tolist()[::1])
-        self._predict_topk(self.test_df['msg'].tolist()[::1], self.test_df['Label'].tolist()[::1]) #😀️
-
+        if 'msg' in self.test_df.columns:
+            self._predict_topk(self.test_df['msg'].tolist()[::1], self.test_df['Label'].tolist()[::1])
+        else:
+            self._predict_topk(self.test_df['EventSequence'].tolist()[::1], self.test_df['Label'].tolist()[::1])
 
     def _build_vocab(self):
         # Build vocab
@@ -104,8 +105,11 @@ class InitGPT(nn.Module):
                                   collate_fn=train_dataset.collate_fn)
         
             if 'msg' in self.train_df.columns:
+                train_encodings = [self.vocab.forward(i) for i in self.train_df['msg'].tolist()[:valid_index]]
                 valid_encodings = [self.vocab.forward(i) for i in self.train_df['msg'].tolist()[valid_index:]]
             else:
+                print("'msg' column not found. Using 'EventSequence' column instead.")
+                train_encodings = [self.vocab.forward(i) for i in self.train_df['EventSequence'].tolist()[:valid_index]]
                 valid_encodings = [self.vocab.forward(i) for i in self.train_df['EventSequence'].tolist()[valid_index:]]
         
             valid_dataset = logdataset.LogDataset(valid_encodings, self.vocab.stoi['<pad>'])
