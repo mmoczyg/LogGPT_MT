@@ -52,5 +52,5 @@ def build_vocab(dataset_path, vocab_path, min_freq=1):
     print(f"Vokabular mit {len(vocab)} Tokens erstellt und in {vocab_path} gespeichert.")
 
 # Beispielaufruf
-build_vocab('./datasets/hdfs.log', './datasets/HDFS_vocab.pkl')
-build_vocab('./datasets/mt_controller_log', './datasets/MtController_vocab.pkl')😀️
+#build_vocab('./datasets/hdfs.log', './datasets/HDFS_vocab.pkl')
+build_vocab('./datasets/mt_controller_log.json', './datasets/MtController_vocab.pkl')#😀️
