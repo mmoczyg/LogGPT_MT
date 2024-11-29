@@ -32,16 +32,19 @@ class InitGPT(nn.Module):
         else:
             self.top_k = min(int((len(self.vocab)-5)*0.95), options['top_k'])
         self._init_training()
-        self._predict_topk(self.test_df['EventSequence'].tolist()[::1], self.test_df['Label'].tolist()[::1])
-       #self._predict_topk(self.test_df['msg'].tolist()[::1], self.test_df['Label'].tolist()[::1]) 😀️
+        #self._predict_topk(self.test_df['EventSequence'].tolist()[::1], self.test_df['Label'].tolist()[::1])
+        self._predict_topk(self.test_df['msg'].tolist()[::1], self.test_df['Label'].tolist()[::1]) #😀️
 
 
     def _build_vocab(self):
         # Build vocab
         if self.options['building_vocab']:
             print('Building vocab...')
-            text = self.train_df['EventSequence'].tolist()
-            #text = self.train_df['msg'].tolist() 😀️
+            if 'msg' in self.train_df.columns:
+                text = self.train_df['msg'].tolist()
+            else:
+                print("'msg' column not found in train_df. Using 'EventSequence' column instead.")
+                text = self.train_df['EventSequence'].tolist()
             self.vocab = vocab.WordVocab(text, sliding_window=self.sliding_window)
             self.vocab.save_vocab(self.vocab_path)
         else:
@@ -49,7 +52,8 @@ class InitGPT(nn.Module):
             self.vocab = vocab.WordVocab.load_vocab(self.vocab_path)
         print(f'Vocab size: {len(self.vocab)}')
         print(self.vocab.itos)
-
+    
+    
     def _save(self, name=None):
         if name is None:
             torch.save({'model_state_dict': self.model.state_dict(),
@@ -59,6 +63,7 @@ class InitGPT(nn.Module):
             torch.save({'model_state_dict': self.model.state_dict(),
                         'optimizer_state_dict': self.optim.state_dict(),
                         }, f'./saved_models/log_gpt2_{self.dataset_name}_{name}.pth')
+                        
     def _load(self, name=None):
         if name is None:
             checkpoint = torch.load(f'./saved_models/log_gpt2_{self.dataset_name}.pth', map_location=self.device)
@@ -85,17 +90,28 @@ class InitGPT(nn.Module):
         self.optim = torch.optim.AdamW(self.model.parameters(), lr=self.options['init_lr'])
         if self.init_logGPT:
             print('Training Initial LogGPT...')
-            valid_index = int(0.9*len(self.train_df))
-            train_encodings = [self.vocab.forward(i) for i in self.train_df['EventSequence'].tolist()[:valid_index]]
-            # train_encodings = [self.vocab.forward(i) for i in self.train_df['msg'].tolist()[:valid_index]] 😀️
+            valid_index = int(0.9 * len(self.train_df))
+        
+            # Check for the 'msg' column
+            if 'msg' in self.train_df.columns:
+                train_encodings = [self.vocab.forward(i) for i in self.train_df['msg'].tolist()[:valid_index]]
+            else:
+                print("'msg' column not found. Using 'EventSequence' column instead.")
+                train_encodings = [self.vocab.forward(i) for i in self.train_df['EventSequence'].tolist()[:valid_index]]
+        
             train_dataset = logdataset.LogDataset(train_encodings, self.vocab.stoi['<pad>'])
             train_loader = DataLoader(train_dataset, batch_size=self.options['init_batch_size'], shuffle=False,
-                                      collate_fn=train_dataset.collate_fn)
-            valid_encodings = [self.vocab.forward(i) for i in self.train_df['EventSequence'].tolist()[valid_index:]]
-            # valid_encodings = [self.vocab.forward(i) for i in self.train_df['msg'].tolist()[valid_index:]] 😀️
+                                  collate_fn=train_dataset.collate_fn)
+        
+            if 'msg' in self.train_df.columns:
+                valid_encodings = [self.vocab.forward(i) for i in self.train_df['msg'].tolist()[valid_index:]]
+            else:
+                valid_encodings = [self.vocab.forward(i) for i in self.train_df['EventSequence'].tolist()[valid_index:]]
+        
             valid_dataset = logdataset.LogDataset(valid_encodings, self.vocab.stoi['<pad>'])
             valid_loader = DataLoader(valid_dataset, batch_size=self.options['init_batch_size'], shuffle=False,
-                                        collate_fn=valid_dataset.collate_fn)
+                                  collate_fn=valid_dataset.collate_fn)
+        
             self.model.to(self.device)
             best_loss = math.inf
             for epoch in tqdm(range(self.options['init_num_epochs']), desc='Epoch:'):
@@ -118,10 +134,10 @@ class InitGPT(nn.Module):
                         outputs = self.model(input, attention_mask=attention_mask, labels=input)
                         loss = outputs.loss
                         epoch_loss += loss.item()
-                if epoch_loss/len(valid_loader) < best_loss:
-                    best_loss = epoch_loss/len(valid_loader)
+                if epoch_loss / len(valid_loader) < best_loss:
+                    best_loss = epoch_loss / len(valid_loader)
                     self._save()
-                print(f'Epoch {epoch} loss: {epoch_loss/len(valid_loader)}')
+                print(f'Epoch {epoch} loss: {epoch_loss / len(valid_loader)}')
 
         else:
             print('Loading LogGPT...')
