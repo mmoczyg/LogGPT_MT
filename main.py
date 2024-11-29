@@ -11,17 +11,23 @@ from model import initGPT, logGPT
 import warnings
 warnings.filterwarnings("ignore")
 
+
+def initialize_options(options):
+    """
+    Ensures the 'options' dictionary contains all necessary keys with default values if missing.
+    """
+    # Standardwerte setzen
+    options.setdefault("window_size", 100)  # Default Sliding-Window-Größe
+    options.setdefault("step_size", 50)     # Default Sliding-Window-Schrittweite
+    options.setdefault("max_lens", 10)      # Default maximale Länge des Sliding Windows
+    options.setdefault("output_dir", "./datasets")  # Default-Ausgabeverzeichnis
+    return options
+
 def main():
     if len(sys.argv) < 2:
         parser = hdfs_config.get_args()
     else:
-        if sys.argv[1] == 'Thunderbird':
-            parser = thunderbird_config.get_args()
-        elif sys.argv[1] == 'BGL':
-            parser = bgl_config.get_args()
-        elif sys.argv[1] == 'HDFS':
-            parser = hdfs_config.get_args()
-        elif sys.argv[1] == 'MtController':
+        if sys.argv[1] == 'MtController':
             parser = mtcontroller_config.get_args()
         else:
             print("Only support HDFS, Thunderbird, BGL, and MtController datasets!")
@@ -40,7 +46,7 @@ def main():
     if len(os.listdir(path)) == 0:
         print("Please download the dataset first!")
         return 1
-
+        
     utils.preprocessing(options['preprocessing'], options['dataset_name'], options)
     train_df, test_df = utils.train_test_split(options['dataset_name'], options['train_samples'], options['seed'], options=options)
     initGPT_model = initGPT.InitGPT(options, train_df, test_df)
