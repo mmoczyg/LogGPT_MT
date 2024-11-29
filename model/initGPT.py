@@ -181,8 +181,14 @@ class InitGPT(nn.Module):
         print('Topk results:')
         print(classification_report(y_true=y_true, y_pred=y_pred, digits=5))
         print(confusion_matrix(y_true=y_true, y_pred=y_pred))
-        print(f'AUC ROC: {roc_auc_score(y_true=y_true, y_score=y_pred)}')
-        print(F'AUC PR: {average_precision_score(y_true=y_true, y_score=y_pred)}')
+    
+        # Check if y_true contains more than one class before computing ROC AUC score
+        if len(set(y_true)) > 1:
+            print(f'AUC ROC: {roc_auc_score(y_true=y_true, y_score=y_pred)}')
+            print(f'AUC PR: {average_precision_score(y_true=y_true, y_score=y_pred)}')
+        else:
+            print("AUC ROC score is not defined for a single class in y_true.")
+            print("AUC PR: nan")
 
     def predict(self, seqs, label, cut=None, result=0):
         self.model.eval()
